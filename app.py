@@ -13,7 +13,7 @@ class MessageData(BaseModel):
 app = FastAPI(title="API MQTT Publisher")
 
 # Configuración del broker MQTT
-BROKER = "broker.emqx.io"
+BROKER = "broker.mqtt.cool"
 PORT = 1883  # Puerto estándar para MQTT
 TOPIC = "mi/topico/mqtt"
 CLIENT_ID = "MQTT_Publisher_Client"
