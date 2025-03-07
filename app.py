@@ -1,81 +1,30 @@
-import json
-import time
+from fastapi import FastAPI
 import paho.mqtt.client as mqtt
-from flask import Flask, request, jsonify
+import os
 
-# Configuración de la aplicación Flask
-app = Flask(__name__)
+# Configuración de FastAPI
+app = FastAPI(title="API MQTT Publisher")
 
-# Configuración de MQTT Hive
-MQTT_BROKER = "broker.hivemq.com"  # Broker público de HiveMQ
-MQTT_PORT = 1883
-MQTT_TOPIC = "mi_aplicacion/datos"
-MQTT_CLIENT_ID = f"python-mqtt-{time.time()}"
+# Configuración del broker MQTT (HiveMQ público)
+BROKER = "broker.hivemq.com"
+PORT = 1883
+TOPIC = "mi/topico/mqtt"  # Cambia esto a un tópico personalizado
+CLIENT_ID = "MQTT_Publisher_Client"
 
-# Función de conexión al broker MQTT
-def connect_mqtt():
-    def on_connect(client, userdata, flags, rc):
-        if rc == 0:
-            print("Conectado a MQTT Broker!")
-        else:
-            print(f"Error de conexión, código de retorno {rc}")
+# Crear cliente MQTT
+mqtt_client = mqtt.Client(CLIENT_ID)
 
-    client = mqtt.Client(MQTT_CLIENT_ID)
-    client.on_connect = on_connect
-    client.connect(MQTT_BROKER, MQTT_PORT)
-    return client
+# Conectar al broker
+mqtt_client.connect(BROKER, PORT, 60)
 
-# Función para publicar mensaje en MQTT
-def publish(client, topic, msg):
-    result = client.publish(topic, msg)
-    status = result[0]
-    if status == 0:
-        print(f"Mensaje enviado a {topic}: {msg}")
-    else:
-        print(f"Error al enviar mensaje a {topic}")
+# Endpoint para recibir datos y publicarlos en MQTT
+@app.post("/publish/")
+async def publish_message(message: str):
+    """Recibe un mensaje por API y lo publica en MQTT"""
+    mqtt_client.publish(TOPIC, message)
+    return {"message": f"Publicado en MQTT: {message}"}
 
-# Iniciar cliente MQTT
-mqtt_client = connect_mqtt()
-mqtt_client.loop_start()
-
-# Ruta para recibir datos JSON
-@app.route('/recibir_datos', methods=['POST'])
-def recibir_datos():
-    try:
-        # Recibir datos JSON de la interfaz
-        datos = request.json
-        
-        if not datos:
-            return jsonify({"status": "error", "message": "No se recibieron datos"}), 400
-        
-        # Aquí puedes procesar los datos con IA si lo necesitas
-        # Por ejemplo: resultado = procesar_con_ia(datos)
-        
-        # Para este ejemplo simplemente pasamos los datos recibidos
-        resultado = datos
-        
-        # Convertir a string JSON para enviar por MQTT
-        mensaje = json.dumps(resultado)
-        
-        # Publicar en MQTT Hive
-        publish(mqtt_client, MQTT_TOPIC, mensaje)
-        
-        return jsonify({"status": "success", "message": "Datos publicados en MQTT"}), 200
-    
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-# Función opcional: procesar con IA (implementar según necesidades)
-def procesar_con_ia(datos):
-    # Aquí irían las llamadas a tu modelo de IA
-    # Por ejemplo, usando TensorFlow, PyTorch, o una API externa
-    
-    # Este es solo un ejemplo de procesamiento simple
-    resultado = datos.copy()
-    resultado["procesado"] = True
-    resultado["timestamp"] = time.time()
-    
-    return resultado
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+# Ejecutar el servidor con uvicorn
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
