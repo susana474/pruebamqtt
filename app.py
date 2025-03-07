@@ -71,7 +71,8 @@ async def root_post(data: MessageData = None, request: Request = None):
         if not message:
             return {"status": "error", "message": "No se proporcionó un mensaje"}
             
-        result = mqtt_client.publish(TOPIC, str(message))
+        result = mqtt_client.publish(TOPIC, message, qos=1, retain=True)
+
         if result.rc != 0:
             raise HTTPException(status_code=500, detail=f"Error al publicar: {result.rc}")
         return {"status": "success", "message": f"Publicado en MQTT: {message}"}
