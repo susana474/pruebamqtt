@@ -54,7 +54,7 @@ async def root(message: str = None):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     else:
-        return {"message": "Bienvenido a la API MQTT Publisher. Usa ?message=TuMensaje para publicar"}
+        return {"message": message}
 
 # Endpoint para favicon
 @app.get("/favicon.ico")
