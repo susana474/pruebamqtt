@@ -1,5 +1,4 @@
 gunicorn
 uvicorn
 fastapi 
-flask 
 paho-mqtt
