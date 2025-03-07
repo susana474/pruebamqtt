@@ -7,7 +7,7 @@ app = FastAPI(title="API MQTT Publisher")
 
 # Configuración del broker MQTT (HiveMQ público)
 BROKER = "	broker.emqx.io"
-PORT = 1883
+PORT = 8084
 TOPIC = "mi/topico/mqtt"  # Cambia esto a un tópico personalizado
 CLIENT_ID = "MQTT_Publisher_Client"
 
