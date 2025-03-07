@@ -40,45 +40,6 @@ try:
 except Exception as e:
     print(f"⚠️ Error al conectar con el broker MQTT: {e}")
 
-# Endpoint raíz para GET
-@app.get("/")
-async def root_get(message: str = None):
-    """Endpoint GET que acepta parámetro de consulta"""
-    if message:
-        try:
-            result = mqtt_client.publish(TOPIC, message)
-            if result.rc != 0:
-                raise HTTPException(status_code=500, detail=f"Error al publicar: {result.rc}")
-            return {"status": "success", "message": f"Publicado en MQTT: {message}"}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-    else:
-        return {"message": "Bienvenido a la API MQTT Publisher. Usa ?message=TuMensaje para publicar"}
-
-# Endpoint raíz para POST
-@app.post("/")
-async def root_post(data: MessageData = None, request: Request = None):
-    """Endpoint POST que acepta JSON"""
-    try:
-        # Si se envió un objeto MessageData
-        if data and data.message:
-            message = data.message
-        # Si no, intentamos leer el cuerpo de la solicitud
-        else:
-            body = await request.json()
-            message = body.get("message")
-            
-        if not message:
-            return {"status": "error", "message": "No se proporcionó un mensaje"}
-            
-        result = mqtt_client.publish(TOPIC, message, qos=1, retain=True)
-
-        if result.rc != 0:
-            raise HTTPException(status_code=500, detail=f"Error al publicar: {result.rc}")
-        return {"status": "success", "message": f"Publicado en MQTT: {message}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 # Endpoint para favicon
 @app.get("/favicon.ico")
 async def favicon():
