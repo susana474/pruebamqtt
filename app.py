@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import paho.mqtt.client as mqtt
@@ -12,10 +12,10 @@ class MessageData(BaseModel):
 # Configuración de FastAPI
 app = FastAPI(title="API MQTT Publisher")
 
-# Configuración del broker MQTT (HiveMQ público)
-BROKER = "broker.mqtt.cool"
-PORT = 1883
-TOPIC = "mi/topico/mqtt"  # Cambia esto a un tópico personalizado
+# Configuración del broker MQTT
+BROKER = "broker.emqx.io"
+PORT = 1883  # Puerto estándar para MQTT
+TOPIC = "mi/topico/mqtt"
 CLIENT_ID = "MQTT_Publisher_Client"
 
 # Callbacks para el cliente MQTT
@@ -40,11 +40,10 @@ try:
 except Exception as e:
     print(f"⚠️ Error al conectar con el broker MQTT: {e}")
 
-# Endpoint raíz - Ahora maneja tanto GET como POST
+# Endpoint raíz para GET
 @app.get("/")
-@app.post("/")
-async def root(message: str = None):
-    """Endpoint principal que acepta GET y POST"""
+async def root_get(message: str = None):
+    """Endpoint GET que acepta parámetro de consulta"""
     if message:
         try:
             result = mqtt_client.publish(TOPIC, message)
@@ -54,17 +53,38 @@ async def root(message: str = None):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     else:
-        return {"message": message}
+        return {"message": "Bienvenido a la API MQTT Publisher. Usa ?message=TuMensaje para publicar"}
+
+# Endpoint raíz para POST
+@app.post("/")
+async def root_post(data: MessageData = None, request: Request = None):
+    """Endpoint POST que acepta JSON"""
+    try:
+        # Si se envió un objeto MessageData
+        if data and data.message:
+            message = data.message
+        # Si no, intentamos leer el cuerpo de la solicitud
+        else:
+            body = await request.json()
+            message = body.get("message")
+            
+        if not message:
+            return {"status": "error", "message": "No se proporcionó un mensaje"}
+            
+        result = mqtt_client.publish(TOPIC, str(message))
+        if result.rc != 0:
+            raise HTTPException(status_code=500, detail=f"Error al publicar: {result.rc}")
+        return {"status": "success", "message": f"Publicado en MQTT: {message}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # Endpoint para favicon
 @app.get("/favicon.ico")
 async def favicon():
     """Maneja la solicitud de favicon.ico"""
-    # Comprueba si existe un favicon
     favicon_path = Path("static/favicon.ico")
     if favicon_path.exists():
         return FileResponse(favicon_path)
-    # Si no hay favicon, devuelve un código 204 (No Content)
     return Response(status_code=204)
 
 # Endpoint original para publicar
