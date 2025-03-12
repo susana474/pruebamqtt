@@ -13,9 +13,9 @@ class MessageData(BaseModel):
 app = FastAPI(title="API MQTT Publisher")
 
 # Configuración del broker MQTT
-BROKER = "broker.mqtt.cool"
+BROKER = "broker.hivemq.com"
 PORT = 1883  # Puerto estándar para MQTT
-TOPIC = "mi/topico/mqtt"
+TOPIC = "prueba/ciros"
 CLIENT_ID = "MQTT_Publisher_Client"
 
 # Callbacks para el cliente MQTT
