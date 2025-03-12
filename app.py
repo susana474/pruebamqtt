@@ -1,76 +1,39 @@
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-import paho.mqtt.client as mqtt
 import os
-from pathlib import Path
+import json
+from flask import Flask, request, jsonify
+import firebase_admin
+from firebase_admin import credentials, db
 
-# Modelo para validar datos de entrada
-class MessageData(BaseModel):
-    message: str
+app = Flask(__name__)
 
-# Configuración de FastAPI
-app = FastAPI(title="API MQTT Publisher")
+# Cargar las credenciales de Firebase desde las variables de entorno
+firebase_credentials = os.getenv("FIREBASE_CREDENTIALS")
 
-# Configuración del broker MQTT
-BROKER = "broker.hivemq.com"
-PORT = 1883  # Puerto estándar para MQTT
-TOPIC = "prueba/ciros"
-CLIENT_ID = "MQTT_Publisher_Client"
+if firebase_credentials:
+    creds_dict = json.loads(firebase_credentials)
+    cred = credentials.Certificate(creds_dict)
+    firebase_admin.initialize_app(cred, {
+        "databaseURL": "https://tu-proyecto-default-rtdb.firebaseio.com/"
+    })
+else:
+    print("⚠️ ERROR: No se encontró la clave de Firebase en las variables de entorno.")
 
-# Callbacks para el cliente MQTT
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print(f"✅ Conectado al broker MQTT ({BROKER})")
-    else:
-        print(f"⚠️ Error al conectar: {rc}")
-
-def on_disconnect(client, userdata, rc, properties=None):
-    print(f"Desconectado con código: {rc}")
-
-# Crear cliente MQTT
-mqtt_client = mqtt.Client(client_id=CLIENT_ID)
-mqtt_client.on_connect = on_connect
-mqtt_client.on_disconnect = on_disconnect
-
-# Conectar al broker de forma más segura
-try:
-    mqtt_client.connect(BROKER, PORT, 60)
-    mqtt_client.loop_start()  # Iniciar loop en segundo plano
-except Exception as e:
-    print(f"⚠️ Error al conectar con el broker MQTT: {e}")
-
-# Endpoint para favicon
-@app.get("/favicon.ico")
-async def favicon():
-    """Maneja la solicitud de favicon.ico"""
-    favicon_path = Path("static/favicon.ico")
-    if favicon_path.exists():
-        return FileResponse(favicon_path)
-    return Response(status_code=204)
-@app.get("/")
-async def root():
-    return {"message": "¡API MQTT Publisher está funcionando!"}
-
-# Endpoint original para publicar
-@app.post("/publish/")
-async def publish_message(data: MessageData):
-    """Recibe un mensaje por API y lo publica en MQTT"""
+# Ruta para recibir JSON y guardarlo en Firebase
+@app.route('/guardar', methods=['POST'])
+def guardar_en_firebase():
     try:
-        result = mqtt_client.publish(TOPIC, data.message, qos=1, retain=True)
-        if result.rc != 0:
-            raise HTTPException(status_code=500, detail=f"Error al publicar: {result.rc}")
-        return {"status": "success", "message": f"Publicado en MQTT: {data.message}"}
+        data = request.get_json()  # Recibe los datos en JSON
+        ref = db.reference("/datos_recibidos")  # Ruta en Firebase
+        nueva_ref = ref.push(data)  # Guarda los datos con un ID único
+        return jsonify({"message": "Datos guardados", "id": nueva_ref.key}), 201
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
-# Limpieza al cerrar la aplicación
-@app.on_event("shutdown")
-def shutdown_event():
-    mqtt_client.loop_stop()
-    mqtt_client.disconnect()
-    print("Cliente MQTT desconectado")
+# Prueba básica
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({"message": "API funcionando"}), 200
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=5000)
+
