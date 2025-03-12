@@ -48,6 +48,9 @@ async def favicon():
     if favicon_path.exists():
         return FileResponse(favicon_path)
     return Response(status_code=204)
+@app.get("/")
+async def root():
+    return {"message": "¡API MQTT Publisher está funcionando!"}
 
 # Endpoint original para publicar
 @app.post("/publish/")
