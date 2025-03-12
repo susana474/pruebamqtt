@@ -19,7 +19,7 @@ TOPIC = "prueba/ciros"
 CLIENT_ID = "MQTT_Publisher_Client"
 
 # Callbacks para el cliente MQTT
-def on_connect(client, userdata, flags, rc, properties=None):
+def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print(f"✅ Conectado al broker MQTT ({BROKER})")
     else:
